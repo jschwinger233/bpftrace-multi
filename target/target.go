@@ -25,8 +25,8 @@ func New(target string) (targetObj Target, err error) {
 	switch parts[0] {
 	case "has_param":
 		targetObj = newTargetHasParam(parts[1])
-		//case "has_retval":
-		//	targetObj = newTargetHasRetval(parts[1])
+	case "has_retval":
+		targetObj = newTargetHasRetval(parts[1])
 		//case "from_file":
 		//	targetObj = newTargetFromFile(parts[1])
 	default:
