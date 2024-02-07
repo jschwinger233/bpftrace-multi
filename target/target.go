@@ -13,12 +13,12 @@ type Target interface {
 
 type Block interface {
 	ID() string
-	X() string
-	Probe(string) string
+	ProbeTargets() []string
+	VarReplaceFunc() func(string) string
 }
 
 func New(target string) (targetObj Target, err error) {
-	parts := strings.Split(target, "=")
+	parts := strings.Split(target, ":")
 	if len(parts) != 2 {
 		return nil, fmt.Errorf("invalid target: %s", target)
 	}

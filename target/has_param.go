@@ -2,6 +2,7 @@ package target
 
 import (
 	"fmt"
+	"regexp"
 	"strings"
 
 	"github.com/cilium/ebpf/btf"
@@ -54,16 +55,15 @@ func (b *BlockHasParam) ID() string {
 	return fmt.Sprintf("has_param:%s:%d", b.target.param, b.paramPosition)
 }
 
-func (b *BlockHasParam) X() string {
-	return fmt.Sprintf("arg%d", b.paramPosition)
+func (b *BlockHasParam) VarReplaceFunc() func(string) string {
+	regex := regexp.MustCompile(fmt.Sprintf(`{{\s*%s\s*}}`, b.target.param))
+	return func(template string) string {
+		return regex.ReplaceAllString(template, fmt.Sprintf("arg%d", b.paramPosition))
+	}
 }
 
-func (b *BlockHasParam) Probe(kind string) string {
-	parts := []string{}
-	for _, symbol := range b.symbols {
-		parts = append(parts, fmt.Sprintf("%s:%s", kind, symbol))
-	}
-	return strings.Join(parts, ",")
+func (b *BlockHasParam) ProbeTargets() []string {
+	return b.symbols
 }
 
 func searchSymbolsByParam(paramType string) (pos2symbols map[int][]string, err error) {
