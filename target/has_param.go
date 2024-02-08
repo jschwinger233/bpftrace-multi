@@ -34,6 +34,9 @@ func (t *TargetHasParam) Blocks() (blocks []Block, err error) {
 	if err != nil {
 		return
 	}
+	if len(pos2symbols) == 0 {
+		return nil, fmt.Errorf("no symbols found for param: %s", t.param)
+	}
 	for i := 0; i < 5; i++ {
 		blocks = append(blocks, &BlockHasParam{
 			paramPosition: i,

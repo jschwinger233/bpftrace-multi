@@ -19,7 +19,7 @@ type Template struct {
 
 func New(raw string) (*Template, error) {
 	if !regProbe.MatchString(raw) {
-		return nil, fmt.Errorf("invalid template")
+		return nil, fmt.Errorf("invalid template, should be like 'k:{{ }}'")
 	}
 	submatches := regProbe.FindStringSubmatch(raw)
 	return &Template{

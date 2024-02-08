@@ -49,6 +49,7 @@ func main() {
 
 		templateObj, err := template.New(rawBlock + "\n}\n\n")
 		if err != nil {
+			log.Printf("[WARN] Failed to create template object: %+v\n", err)
 			fmt.Fprintf(output, "%s", rawBlock)
 			continue
 		}

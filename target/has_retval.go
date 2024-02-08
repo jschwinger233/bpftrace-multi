@@ -31,6 +31,9 @@ func (t *TargetHasRetval) Blocks() (blocks []Block, err error) {
 	if err != nil {
 		return
 	}
+	if len(symbols) == 0 {
+		return nil, fmt.Errorf("no symbols found for param: %s", t.param)
+	}
 	return append(blocks, &BlockHasRetval{
 		symbols: symbols,
 		target:  t,

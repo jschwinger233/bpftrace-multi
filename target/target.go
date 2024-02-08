@@ -27,8 +27,8 @@ func New(target string) (targetObj Target, err error) {
 		targetObj = newTargetHasParam(parts[1])
 	case "has_retval":
 		targetObj = newTargetHasRetval(parts[1])
-		//case "from_file":
-		//	targetObj = newTargetFromFile(parts[1])
+	case "from_file":
+		targetObj = newTargetFromFile(parts[1])
 	default:
 		return nil, fmt.Errorf("unknown target: %s", parts[0])
 	}
