@@ -9,6 +9,7 @@ import (
 	"os/exec"
 	"os/signal"
 	"regexp"
+	"slices"
 	"strings"
 
 	"github.com/jschwinger233/bpftrace-multi/target"
@@ -19,6 +20,7 @@ import (
 var regSplit = regexp.MustCompile(`(?m)^}$\n*`)
 
 func main() {
+	var paramMap *bool = flag.BoolP("param-map", "", false, "Generate @param map in BEGIN block")
 	var dryRun *bool = flag.BoolP("dry-run", "n", false, "Dry run")
 	flag.Parse()
 
@@ -41,6 +43,7 @@ func main() {
 	if err != nil {
 		log.Fatalf("Failed to read file %s: %+v\n", script, err)
 	}
+	begins := []string{}
 	for _, rawBlock := range regSplit.Split(string(content), -1) {
 		rawBlock = strings.TrimSpace(rawBlock)
 		if rawBlock == "" {
@@ -54,7 +57,7 @@ func main() {
 			continue
 		}
 
-		targetObj, err := target.New(templateObj.ProbeTarget())
+		targetObj, err := target.New(templateObj.ProbeTarget(), *paramMap)
 		if err != nil {
 			log.Fatalf("Failed to create target object due to %+v", err)
 		}
@@ -65,10 +68,14 @@ func main() {
 		for _, block := range blocks {
 			templateObj.SetProbeTargets(block.ProbeTargets())
 			templateObj.SetVars(block.VarReplaceFunc())
+			begins = append(begins, block.Begins()...)
 			fmt.Fprintf(output, "%s", templateObj.Render())
 		}
-
 	}
+	slices.Sort(begins)
+	begins = slices.Compact(begins)
+	begins = append(begins, `printf("start tracing\n");`)
+	fmt.Fprintf(output, fmt.Sprintf("BEGIN {\n%s\n}\n", strings.Join(begins, "\n")))
 
 	if !*dryRun {
 		ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt)

@@ -4,17 +4,17 @@ import (
 	"fmt"
 	"regexp"
 	"strings"
-
-	"github.com/cilium/ebpf/btf"
 )
 
 type TargetHasParam struct {
-	param string
+	param    string
+	paramMap bool
 }
 
-func newTargetHasParam(param string) Target {
+func newTargetHasParam(param string, paramMap bool) Target {
 	return &TargetHasParam{
-		param: param,
+		param:    param,
+		paramMap: paramMap,
 	}
 }
 
@@ -69,38 +69,9 @@ func (b *BlockHasParam) ProbeTargets() []string {
 	return b.symbols
 }
 
-func searchSymbolsByParam(paramType string) (pos2symbols map[int][]string, err error) {
-	pos2symbols = map[int][]string{}
-
-	btfSpec, err := btf.LoadKernelSpec()
-	if err != nil {
-		return nil, fmt.Errorf("failed to load kernel BTF: %+v\n", err)
+func (b *BlockHasParam) Begins() []string {
+	if !b.target.paramMap {
+		return nil
 	}
-
-	iter := btfSpec.Iterate()
-	for iter.Next() {
-		typ := iter.Type
-		fn, ok := typ.(*btf.Func)
-		if !ok {
-			continue
-		}
-
-		fnName := string(fn.Name)
-
-		fnProto := fn.Type.(*btf.FuncProto)
-		i := 0
-		for _, p := range fnProto.Params {
-			if ptr, ok := p.Type.(*btf.Pointer); ok {
-				if strct, ok := ptr.Target.(*btf.Struct); ok {
-					if strct.Name == paramType && i < 5 {
-						name := fnName
-						pos2symbols[i] = append(pos2symbols[i], name)
-						continue
-					}
-				}
-			}
-			i++
-		}
-	}
-	return
+	return begins(b.symbols)
 }

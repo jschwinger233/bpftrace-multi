@@ -3,16 +3,18 @@ package target
 import (
 	"fmt"
 	"strings"
-
-	"github.com/cilium/ebpf/btf"
 )
 
 type TargetHasRetval struct {
-	param string
+	param    string
+	paramMap bool
 }
 
-func newTargetHasRetval(param string) *TargetHasRetval {
-	return &TargetHasRetval{param: param}
+func newTargetHasRetval(param string, paramMap bool) *TargetHasRetval {
+	return &TargetHasRetval{
+		param:    param,
+		paramMap: paramMap,
+	}
 }
 
 func (t *TargetHasRetval) ID() string {
@@ -59,32 +61,9 @@ func (b *BlockHasRetval) ProbeTargets() []string {
 	return b.symbols
 }
 
-func searchSymbolsByRetval(paramType string) (symbols []string, err error) {
-	btfSpec, err := btf.LoadKernelSpec()
-	if err != nil {
-		return nil, fmt.Errorf("failed to load kernel BTF: %+v\n", err)
+func (b *BlockHasRetval) Begins() []string {
+	if !b.target.paramMap {
+		return nil
 	}
-
-	iter := btfSpec.Iterate()
-	for iter.Next() {
-		typ := iter.Type
-		fn, ok := typ.(*btf.Func)
-		if !ok {
-			continue
-		}
-
-		fnName := string(fn.Name)
-
-		fnProto := fn.Type.(*btf.FuncProto)
-		if ptr, ok := fnProto.Return.(*btf.Pointer); ok {
-			if strct, ok := ptr.Target.(*btf.Struct); ok {
-				if strct.Name == paramType {
-					name := fnName
-					symbols = append(symbols, name)
-					continue
-				}
-			}
-		}
-	}
-	return
+	return begins(b.symbols)
 }

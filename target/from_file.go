@@ -9,10 +9,14 @@ import (
 
 type TargetFromFile struct {
 	filename string
+	paramMap bool
 }
 
-func newTargetFromFile(filename string) *TargetFromFile {
-	return &TargetFromFile{filename: filename}
+func newTargetFromFile(filename string, paramMap bool) *TargetFromFile {
+	return &TargetFromFile{
+		filename: filename,
+		paramMap: paramMap,
+	}
 }
 
 func (t *TargetFromFile) ID() string {
@@ -59,4 +63,11 @@ func (b *BlockFromFile) VarReplaceFunc() func(string) string {
 
 func (b *BlockFromFile) ProbeTargets() []string {
 	return b.symbols
+}
+
+func (b *BlockFromFile) Begins() []string {
+	if !b.target.paramMap {
+		return nil
+	}
+	return begins(b.symbols)
 }
