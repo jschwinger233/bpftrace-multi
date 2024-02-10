@@ -66,6 +66,9 @@ func main() {
 			log.Fatalf("Failed to get blocks for target %s: %+v\n", targetObj.ID(), err)
 		}
 		for _, block := range blocks {
+			if len(block.ProbeTargets()) == 0 {
+				continue
+			}
 			templateObj.SetProbeTargets(block.ProbeTargets())
 			templateObj.SetVars(block.VarReplaceFunc())
 			begins = append(begins, block.Begins()...)
