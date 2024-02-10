@@ -104,17 +104,15 @@ kr:{{ from_file:./netfilter.symbols }}
 {
     $ip = @traced[reg("sp")-8];
     if (retval != 0 && $ip != 0) {
-        $para = @param[$ip];
-        printf("non-zero retval: %s(%s)=%lld %s\n", ksym($ip), $para, retval, kstack);
+        printf("non-zero retval: %s()=%lld %s\n", ksym($ip), retval, kstack);
     }
 }
 ```
 
-Since we are using `@param`, we must run script with `--param-map`.
-
 The output is like:
 
 ```
+start tracing
 non-zero retval: xt_find_revision()=1
         nfnl_compat_get_rcu+218
         nfnetlink_rcv_msg+501
@@ -167,4 +165,44 @@ non-zero retval: xt_check_target()=4294967274
         __x64_sys_sendmsg+29
         do_syscall_64+88
         entry_SYSCALL_64_after_hwframe+110
+```
+
+## 3. Who changed my netdev?
+
+This was the original reason why I created this tool. There was a misterious process changing my veth's mac address, and I wanted to find out that bad process.
+
+The idea is to attach bpf to all kfuncs with parameter of type `struct net_device *`. By recording `dev->dev_addr` at kprobe, we can be aware of any change of `dev->dev_addr` at kretprobe.
+
+```
+k:{{ has_param:net_device }}
+{
+    $dev = (struct net_device *){{ net_device }};
+    $dev_addr = (uint8*)($dev->dev_addr);
+    @old[tid, reg("sp")] = ($dev, $dev_addr[0], $dev_addr[1], $dev_addr[2], $dev_addr[3], $dev_addr[4], $dev_addr[5]);
+}
+
+kr:{{ has_param:net_device }}
+{
+    $info = @old[tid, reg("sp")-8];
+    if ($info.0 != 0) {
+        $dev = (struct net_device *)$info.0;
+        $new_addr = (uint8*)($dev->dev_addr);
+        if ($new_addr[0] != $info.1 || $new_addr[1] != $info.2 || $new_addr[2] != $info.3 || $new_addr[3] != $info.4 || $new_addr[4] != $info.5 || $new_addr[5] != $info.6) {
+            printf("%s's mac addr changed from %x:%x:%x", $dev->name, $info.1, $info.2, $info.3);
+            printf(":%x:%x:%x ", $info.4, $info.5, $info.6);
+            printf("to %s by %s(%lld)\n", macaddr($dev->dev_addr), comm, pid);
+        }
+    }
+    delete(@old[tid, reg("sp")-8]);
+}
+```
+
+The output is like:
+
+```
+start tracing
+virbr0's mac addr changed from 52:54:0:62:1b:b1 to 52:54:00:62:1B:B2 by ip(59708)
+virbr0's mac addr changed from 52:54:0:62:1b:b1 to 52:54:00:62:1B:B2 by ip(59708)
+virbr0's mac addr changed from 52:54:0:62:1b:b1 to 52:54:00:62:1B:B2 by ip(59708)
+virbr0's mac addr changed from 52:54:0:62:1b:b1 to 52:54:00:62:1B:B2 by ip(59708)
 ```
