@@ -21,6 +21,7 @@ var regSplit = regexp.MustCompile(`(?m)^}$\n*`)
 
 func main() {
 	var paramMap *bool = flag.BoolP("param-map", "", false, "Generate @param map in BEGIN block")
+	var allKmods *bool = flag.BoolP("all-kmods", "a", false, "Search all available kernel modules")
 	var dryRun *bool = flag.BoolP("dry-run", "n", false, "Dry run")
 	flag.Parse()
 
@@ -57,7 +58,10 @@ func main() {
 			continue
 		}
 
-		targetObj, err := target.New(templateObj.ProbeTarget(), *paramMap)
+		targetObj, err := target.New(templateObj.ProbeTarget(), &target.Options{
+			ParamMap: *paramMap,
+			AllKmods: *allKmods,
+		})
 		if err != nil {
 			log.Fatalf("Failed to create target object due to %+v", err)
 		}
