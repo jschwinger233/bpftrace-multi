@@ -3,42 +3,50 @@ package target
 import (
 	"fmt"
 	"os"
+	"sync"
 
 	"github.com/cilium/ebpf/btf"
 )
 
 var btfSpecs []*btf.Spec
+var once sync.Once
 
-func initBtfSpecs(allKmods bool) (err error) {
-	btfSpec, err := btf.LoadKernelSpec()
-	if err != nil {
-		return fmt.Errorf("failed to load kernel BTF: %v", err)
-	}
-	btfSpecs = append(btfSpecs, btfSpec)
-
-	if allKmods {
-		files, err := os.ReadDir("/sys/kernel/btf")
+func initBtfSpecs(allKmods bool) (initErr error) {
+	once.Do(func() {
+		btfSpec, err := btf.LoadKernelSpec()
 		if err != nil {
-			return fmt.Errorf("failed to read BTF: %v", err)
+			initErr = fmt.Errorf("failed to load kernel BTF: %v", err)
+			return
 		}
+		btfSpecs = append(btfSpecs, btfSpec)
 
-		for _, file := range files {
-			if file.IsDir() || file.Name() == "vmlinux" {
-				continue
-			}
-			f, err := os.Open("/sys/kernel/btf/" + file.Name())
+		if allKmods {
+			files, err := os.ReadDir("/sys/kernel/btf")
 			if err != nil {
-				return fmt.Errorf("failed to open BTF: %v", err)
+				initErr = fmt.Errorf("failed to read BTF: %v", err)
+				return
 			}
-			defer f.Close()
 
-			modSpec, err := btf.LoadSplitSpecFromReader(f, btfSpec)
-			if err != nil {
-				return fmt.Errorf("failed to load BTF: %v", err)
+			for _, file := range files {
+				if file.IsDir() || file.Name() == "vmlinux" {
+					continue
+				}
+				f, err := os.Open("/sys/kernel/btf/" + file.Name())
+				if err != nil {
+					initErr = fmt.Errorf("failed to open BTF: %v", err)
+					return
+				}
+				defer f.Close()
+
+				modSpec, err := btf.LoadSplitSpecFromReader(f, btfSpec)
+				if err != nil {
+					initErr = fmt.Errorf("failed to load BTF: %v", err)
+					return
+				}
+				btfSpecs = append(btfSpecs, modSpec)
 			}
-			btfSpecs = append(btfSpecs, modSpec)
 		}
-	}
+	})
 	return
 }
 
