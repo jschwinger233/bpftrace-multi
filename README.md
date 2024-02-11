@@ -9,6 +9,7 @@ Use bpftrace v0.19+.
 ```
 Usage: sudo BPFTRACE_MAX_PROBES=4000 bpftrace-multi [filename]:
 
+  -a, --all-kmods   Search all available kernel modules
   -n, --dry-run     Dry run
       --param-map   Generate @param map in BEGIN block
 ```
